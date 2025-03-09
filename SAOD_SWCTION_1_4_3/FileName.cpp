@@ -37,9 +37,7 @@ int getListsCount() {
 ListOfLists* findListByName(const string& name) {
     ListOfLists* temp = list;
     while (temp != nullptr) {
-        if (temp->name == name) {
-            return temp;
-        }
+        if (temp->name == name) return temp;
         temp = temp->next;
     }
     return nullptr;
