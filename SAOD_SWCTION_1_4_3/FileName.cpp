@@ -6,25 +6,28 @@ using namespace std;
 struct List {
     string data;
     List* next;
+	List* prev;
 };
 
 struct ListOfLists {
-    string name; // Название списка
+    string name;
     List* head;
+
     ListOfLists* next;
+    ListOfLists* prev;
 };
 
 ListOfLists* list = nullptr;
-
-bool isEmpty() {
+ 
+static bool isEmpty() {
     return list == nullptr;
 }
 
-bool isEmptyList(List* l) {
+static bool isEmptyList(const List* l) {
     return l == nullptr;
 }
 
-int getListsCount() {
+static int getListsCount() {
     int count = 0;
     ListOfLists* temp = list;
     while (temp != nullptr) {
@@ -34,16 +37,27 @@ int getListsCount() {
     return count;
 }
 
-ListOfLists* findListByName(const string& name) {
+static ListOfLists* findListByName(const string& name) {
     ListOfLists* temp = list;
     while (temp != nullptr) {
         if (temp->name == name) return temp;
         temp = temp->next;
     }
+
     return nullptr;
 }
 
-void printList() {
+static List* findElementByValue(List* head, const string& value) {
+	List* temp = head;
+	while (temp != nullptr) {
+		if (temp->data == value) return temp;
+		temp = temp->next;
+	}
+	return nullptr;
+}
+
+static void printList() {
+    cout << endl;
     if (isEmpty()) {
         cout << "Список списков пустой!" << endl;
         return;
@@ -65,193 +79,230 @@ void printList() {
             }
         }
         else cout << " Пустой!" << endl;
-       temp = temp->next;
+        temp = temp->next;   
+    
+        cout << endl;
     }
 }
 
-void addEmptyList(const string& name) {
+static void addEmptyList(const string& name, const bool isAfter, ListOfLists*& target) {
     ListOfLists* newList = new ListOfLists;
     newList->name = name;
     newList->head = nullptr;
     newList->next = nullptr;
+    newList->prev = nullptr;
 
     if (isEmpty()) {
+        cout << "Cоздан первый список списков" << endl;
         list = newList;
         return;
     }
 
-    ListOfLists* temp = list;
-    while (temp->next != nullptr) temp = temp->next;
-    temp->next = newList;
-}
-
-void addElementToList(const string& name, const string& data) {
-    if (isEmpty()) {
-        cout << "Список списков пустой!" << endl;
-        return;
+    if (isAfter) {
+		newList->next = target->next;
+		newList->prev = target;
+		if (target->next) target->next->prev = newList;
+		target->next = newList;
     }
-
-    ListOfLists* listToAdd = findListByName(name);
-    if (listToAdd == nullptr) {
-        cout << "Такого списка не существует!" << endl;
-        return;
+    else {
+		newList->prev = target->prev;
+		newList->next = target;
+        if (target->prev != nullptr) {
+            target->prev->next = newList;
+        }
+        else list = newList;
+        target->prev = newList;
     }
+}               
 
+static void addElementToList(const string& data, const bool isAfter, List*& target, ListOfLists*& list) {
     List* newElement = new List;
     newElement->data = data;
-    newElement->next = nullptr;
 
-    if (isEmptyList(listToAdd->head)) {
-        listToAdd->head = newElement;
+    if (!target) {
+        newElement->next = nullptr;
+        newElement->prev = nullptr;
+        target = newElement;
+        cout << "Создан первый элемент списка" << endl;
         return;
     }
 
-    List* temp2 = listToAdd->head;
-    while (temp2->next != nullptr) temp2 = temp2->next;
-    temp2->next = newElement;
+    if (isAfter) {
+        newElement->next = target->next;
+        newElement->prev = target;
+        if (target->next) target->next->prev = newElement;
+        target->next = newElement;
+    }
+    else {
+		newElement->prev = target->prev;
+		newElement->next = target;
+		if (target->prev != nullptr) target->prev->next = newElement;
+		else list->head = newElement;
+		target->prev = newElement;
+        
+    }
 }
 
-void deleteElementFromList(const string& name, const string& elementValue) {
-    if (isEmpty()) {
-        cout << "Список списков пустой!" << endl;
-        return;
-    }
 
-    ListOfLists* listToDelete = findListByName(name);
-    if (listToDelete == nullptr) {
+static void deleteElementFromList(List*& element, ListOfLists*& list){
+	if (!element) {
+		cout << "Элемент не найден!" << endl;
+		return;
+	}
+
+	if (element->prev) element->prev->next = element->next;
+	else list->head = element->next;
+
+	if (element->next) element->next->prev = element->prev;
+	delete element;
+	cout << "Элемент удален!" << endl;
+}
+
+static void deleteList(ListOfLists*& delList) {   
+    if (!delList) {
         cout << "Такого списка не существует!" << endl;
         return;
     }
 
-    if (isEmptyList(listToDelete->head)) {
-        cout << "Список пустой!" << endl;
-        return;
-    }
+    List* currentElement = delList->head;
 
-    List* temp2 = listToDelete->head;
-    bool isFound = false;
-    if (temp2->data == elementValue) {
-        listToDelete->head = temp2->next;
-        delete temp2;
-        return;
-    }
+	while (currentElement) {
+		List* temp = currentElement->next;
+		deleteElementFromList(currentElement, delList);
+        currentElement =  temp;
+	}
 
-    while (temp2->next != nullptr) {
-        if (temp2->next->data == elementValue) {
-            List* temp3 = temp2->next;
-            temp2->next = temp2->next->next;
-            delete temp3;
-            isFound = true;
-            break;
-        }
-        temp2 = temp2->next;
-    }
-    if (!isFound) cout << "Элемент не найден!" << endl;
+	if (delList->prev) delList->prev->next = delList->next;
+	else list = delList->next;
+	
+	if (delList->next) delList->next->prev = delList->prev;
+
+    delete delList;
 }
 
-void deleteList(const string& name) {
+static void deleteAllLists() {
     if (isEmpty()) {
         cout << "Список списков пустой!" << endl;
         return;
     }
 
-    ListOfLists* temp = list;
-    ListOfLists* prev = nullptr;
-    while (temp != nullptr && temp->name != name) {
-        prev = temp;
-        temp = temp->next;
+    while (list){
+		ListOfLists* temp = list;
+		list = temp->next;
+        deleteList(temp);
     }
-
-    if (temp == nullptr) {
-        cout << "Такого списка не существует!" << endl;
-        return;
-    }
-
-    if (prev == nullptr) list = temp->next;
-    else prev->next = temp->next;
-    
-
-    List* temp2 = temp->head;
-    while (temp2 != nullptr) {
-        List* temp3 = temp2;
-        temp2 = temp2->next;
-        delete temp3;
-    }
-
-    delete temp;
 }
 
-void deleteAllLists() {
-    if (isEmpty()) {
-        cout << "Список списков пустой!" << endl;
-        return;
-    }
-
-    ListOfLists* temp = list;
-    while (temp != nullptr) {
-        ListOfLists* temp2 = temp;
-        temp = temp->next;
-
-        List* temp3 = temp2->head;
-        while (temp3 != nullptr) {
-            List* temp4 = temp3;
-            temp3 = temp3->next;
-            delete temp4;
-        }
-
-        delete temp2;
-    }
-    list = nullptr;
-}
-
-void menu(bool& exit) {
-    cout << "Меню:" << endl;
+static void menu(bool& exit) {
+    cout << endl << "Меню:" << endl;
     cout << "1. Добавить пустой список" << endl;
     cout << "2. Добавить элемент в список" << endl;
     cout << "3. Удалить элемент из списка" << endl;
     cout << "4. Удалить список" << endl;
     cout << "5. Удалить все списки" << endl;
-    cout << "6. Вывести список" << endl;
+    cout << "6. Вывести " << endl;
     cout << "7. Выйти" << endl;
     cout << "Выберите действие: ";
 
     int choice = 0;
     cin >> choice;
     cin.ignore();
+    cin.clear();
 
     switch (choice) {
         case 1: {
-            cout << "Введите название списка: ";
+            bool isAfter = true;
+            ListOfLists* target = list;
+
+            if (!isEmpty()) {
+                target = nullptr;
+                cout << "Вы хотите добавить до(0) или после (1):" << endl;
+                cin >> isAfter;
+                cin.ignore();
+                cin.clear();
+
+                cout << "Введите название target-списка: ";
+                string name;
+                getline(cin, name);
+                target = findListByName(name);
+                if (!target) {
+                    cout << "Такого списка не существует!" << endl;
+                    break;
+                }
+            }
+            else cout << "Список пустой, список будет добавлен в начало!" << endl;
+            cout << "Введите название нового списка: ";
+
             string name;
             getline(cin, name);
-            addEmptyList(name);
+            addEmptyList(name, isAfter, target);
             break;
         }
         case 2: {
-            cout << "Введите название списка: ";
-            string name;
-            getline(cin, name);
-            cout << "Введите значение элемента: ";
-            string value;
-            getline(cin, value);
-            addElementToList(name, value);
+        string input;
+        bool isAfter = true;
+
+        cout << "Введите название списка cписков: ";
+        getline(cin, input);
+        ListOfLists* list = findListByName(input);
+
+        if (list == nullptr) {
+            cout << "Такого списка не существует!" << endl;
             break;
         }
+
+        List* target = list->head;
+
+        if (target) {
+            cout << "Введите название target-элемента: ";
+            getline(cin, input);
+
+            target = findElementByValue(list->head, input);
+            if (target == nullptr) {
+                cout << "Такого элемента не существует!" << endl;
+                break;
+            }
+            
+        }
+        else cout << "Список пустой элемент будет добавлен в начало!" << endl;
+        
+        cout << "Введите значение нового элемента: ";
+        getline(cin, input);
+        
+
+        if (target != nullptr) {
+            cout << "Вы хотите добавить до(0) или после (1):" << endl;
+            cin >> isAfter;
+            cin.ignore();
+            cin.clear();
+            addElementToList(input, isAfter, target, list);
+        }
+        else addElementToList(input, isAfter, list->head, list);
+        break;
+    }
         case 3: {
-            cout << "Введите название списка: ";
-            string name;
-            getline(cin, name);
-            cout << "Введите значение элемента: ";
-            string value;
-            getline(cin, value);
-            deleteElementFromList(name, value);
+			string input;
+            cout << "Введите название списка cписков: ";
+            getline(cin, input);
+			
+            ListOfLists* list = findListByName(input);
+			if (list == nullptr) {
+				cout << "Такого списка не существует!" << endl;
+				break;
+			}
+            
+            cout << "Введите значение элемента которого хотите удалить: ";
+            getline(cin, input);
+			List* target = findElementByValue(list->head, input);
+			deleteElementFromList(target, list);
             break;
         }
         case 4: {
             cout << "Введите название списка: ";
             string name;
             getline(cin, name);
-            deleteList(name);
+			ListOfLists* target = findListByName(name);
+            deleteList(target);
             break;
         }
         case 5: {
@@ -265,14 +316,17 @@ void menu(bool& exit) {
         case 7: {
             exit = true;
             break;
-        }   
+        }
         default: {
             cout << "Неверный ввод!" << endl;
             break;
         }
-    }
-    cout << endl;
+
+    cout << endl;}
 }
+
+
+
 
 int main() {
     setlocale(LC_ALL, "Russian");
